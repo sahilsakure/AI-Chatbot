@@ -1,6 +1,6 @@
 # Aetheris AI — Modern Enterprise AI Chatbot
 
-A production-ready AI Chatbot Web Application built with Python (Flask Application Factory), Google Gemini API (`google-genai` token streaming via SSE), SQLite relational persistence with Flask-SQLAlchemy, Speech-to-Text & Text-to-Speech voice integration, and a glassmorphic multi-theme user interface (Dark, Light, Cyberpunk OLED).
+A production-ready AI Chatbot Web Application built with Python (Flask Application Factory), SQLite relational persistence with Flask-SQLAlchemy, Speech-to-Text & Text-to-Speech voice integration, and a glassmorphic multi-theme user interface (Dark, Light, Cyberpunk OLED).
 
 ---
 
