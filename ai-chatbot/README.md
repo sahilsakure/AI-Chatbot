@@ -67,14 +67,6 @@ Copy `.env.example` to `.env` and provide your credentials:
 cp .env.example .env
 ```
 
-Edit `.env`:
-```ini
-GEMINI_API_KEY="your-google-gemini-api-key"
-GEMINI_MODEL="gemini-3.8-flash"
-SECRET_KEY="generate-a-strong-random-key"
-DATABASE_URL="sqlite:///instance/chatbot.db"
-PORT=3000
-```
 
 ### 4. Run Application
 ```bash
