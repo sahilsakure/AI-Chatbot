@@ -1,0 +1,27 @@
+{
+  "id": "/desktop",
+  "name": "Aetheris AI Desktop Workstation",
+  "short_name": "Aetheris AI",
+  "description": "Desktop AI Workstation powered by Google Gemini with real-time streaming, speech dictation, and session persistence.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "categories": ["productivity", "utilities", "developer"],
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

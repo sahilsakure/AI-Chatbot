@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}AI Chatbot — Enterprise Desktop Workstation{% endblock %}</title>
+  <meta name="description" content="Enterprise AI Desktop Workstation powered by Google Gemini with real-time streaming, speech dictation, wide workspace view, and session persistence.">
+  <meta name="application-name" content="Aetheris AI Desktop">
+  <meta name="theme-color" content="#090d16">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Markdown & Code Highlight Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" id="prism-theme">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+
+  <!-- Bespoke Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Server Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-wrapper">
+        {% for category, message in messages %}
+          <div class="flash-alert flash-{{ category }}" role="alert">
+            <span class="flash-icon">
+              {% if category == 'error' %}⚠️{% elif category == 'success' %}✓{% else %}ℹ️{% endif %}
+            </span>
+            <span class="flash-text">{{ message }}</span>
+            <button class="flash-close" onclick="this.parentElement.remove()" aria-label="Dismiss">&times;</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+
+  <!-- Auth Token Initialization for iframe and cross-site resilience -->
+  <script>
+    {% if auth_token %}
+    window.AETHERIS_AUTH_TOKEN = "{{ auth_token }}";
+    try { localStorage.setItem('aetheris_auth_token', "{{ auth_token }}"); } catch (e) {}
+    {% endif %}
+    if (window.location.search && window.location.search.includes('token=')) {
+      try {
+        const url = new URL(window.location.href);
+        const urlToken = url.searchParams.get('token');
+        if (urlToken) {
+          window.AETHERIS_AUTH_TOKEN = urlToken;
+          localStorage.setItem('aetheris_auth_token', urlToken);
+        }
+        url.searchParams.delete('token');
+        window.history.replaceState({}, document.title, url.pathname + (url.search || '') + (url.hash || ''));
+      } catch (e) {}
+    }
+  </script>
+
+  <!-- Core Scripts -->
+  <script src="{{ url_for('static', filename='js/voice.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

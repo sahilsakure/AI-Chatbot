@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block title %}Aetheris AI — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
+  <!-- Persistent / Collapsible Sidebar -->
+  <aside id="app-sidebar" class="app-sidebar">
+    <div class="sidebar-header">
+      <div class="brand-badge">
+        <div class="brand-symbol">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">Aetheris</span>
+          <span class="brand-edition">Enterprise</span>
+        </div>
+      </div>
+      <button class="icon-btn close-sidebar-btn" onclick="closeMobileSidebar()" aria-label="Close sidebar">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- New Chat Action -->
+    <div class="sidebar-actions">
+      <button id="new-chat-btn" class="btn btn-primary btn-new-chat" onclick="createNewSession()">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>New Conversation</span>
+      </button>
+    </div>
+
+    <!-- Search Sessions -->
+    <div class="sidebar-search">
+      <div class="search-input-wrapper">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" class="search-icon">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="session-search" placeholder="Search conversations..." oninput="filterSessions(this.value)" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- Conversations List -->
+    <div class="sidebar-history">
+      <div class="section-title">
+        <span>Conversations</span>
+        <span id="session-count-badge" class="badge-count">{{ sessions|length }}</span>
+      </div>
+      <ul id="sessions-list" class="sessions-list">
+        {% for s in sessions %}
+          <li class="session-item" data-session-id="{{ s.id }}" onclick="loadSession({{ s.id }})">
+            <div class="session-info">
+              <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" class="session-icon">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span class="session-title" title="{{ s.title }}">{{ s.title }}</span>
+            </div>
+            <div class="session-actions" onclick="event.stopPropagation()">
+              <button class="session-action-btn" title="Rename conversation" onclick="renameSessionPrompt({{ s.id }}, '{{ s.title|escape }}')">
+                <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+              </button>
+              <button class="session-action-btn delete-btn" title="Delete conversation" onclick="deleteSessionConfirm({{ s.id }})">
+                <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </div>
+          </li>
+        {% else %}
+          <li class="sessions-empty" id="no-sessions-msg">No conversations yet. Start one above!</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- User Profile & System Controls Footer -->
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" title="{{ user.username }}">
+          {{ user.username[0]|upper }}
+        </div>
+        <div class="user-meta">
+          <span class="user-name">{{ user.username }}</span>
+          <span class="user-email">{{ user.email }}</span>
+        </div>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="btn-logout" title="Sign out">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Chat Stage -->
+  <main class="chat-main">
+    <!-- Top Navigation Bar -->
+    <header class="chat-header">
+      <div class="header-left">
+        <button id="sidebar-toggle" class="icon-btn toggle-btn" onclick="toggleSidebar()" aria-label="Toggle navigation drawer">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="header-session-info">
+          <h1 id="active-session-title" class="active-session-title">Select a Conversation</h1>
+          <button id="rename-title-btn" class="icon-btn-subtle" title="Rename session" onclick="renameCurrentSession()">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Model Tag Badge -->
+        <div class="model-badge" title="Active Model">
+          <span class="status-pulse"></span>
+          <span class="model-label">{{ gemini_model }}</span>
+        </div>
+
+        <!-- System Prompt Trigger -->
+        <button class="btn-prompt-tune" onclick="openSystemPromptModal()" title="Customize System Prompt">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span class="prompt-tune-text">Prompt</span>
+        </button>
+
+        <!-- Export Dropdown -->
+        <div class="dropdown-export">
+          <button class="icon-btn" title="Export Conversation" onclick="toggleExportMenu(event)">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+          <div id="export-menu" class="export-menu">
+            <button onclick="exportCurrentSession('markdown')">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              <span>Export as Markdown (.md)</span>
+            </button>
+            <button onclick="exportCurrentSession('json')">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              <span>Export as JSON (.json)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Multi-Theme Selector Pills -->
+        <div class="theme-selector-group">
+          <button class="theme-pill active" data-theme="dark" onclick="setTheme('dark')" title="Dark Mode (Slate)">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+          <button class="theme-pill" data-theme="light" onclick="setTheme('light')" title="Light Mode">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
+          <button class="theme-pill" data-theme="cyberpunk" onclick="setTheme('cyberpunk')" title="Cyberpunk OLED">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Message Conversation Scroll Area -->
+    <div id="messages-container" class="messages-container" onscroll="handleScroll(this)">
+      <!-- Initial Welcome State (Rendered when no session or empty messages) -->
+      <div id="welcome-state" class="welcome-state">
+        <div class="welcome-symbol">
+          <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" fill="none" stroke-width="1.5">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+        </div>
+        <h2 class="welcome-title">How can I accelerate your work today?</h2>
+        <p class="welcome-subtitle">Aetheris AI is ready with Gemini intelligence, real-time token streaming, speech dictation, and relational persistence.</p>
+        
+        <div class="suggestion-grid">
+          <div class="suggestion-card" onclick="sendSuggestion('Write an optimized Python function implementing an LRU cache using collections.OrderedDict.')">
+            <span class="card-tag">Python Architecture</span>
+            <p class="card-prompt">Implement an LRU Cache in Python with O(1) time complexity</p>
+          </div>
+          <div class="suggestion-card" onclick="sendSuggestion('Explain Server-Sent Events (SSE) vs WebSockets for streaming LLM tokens, with pros and cons.')">
+            <span class="card-tag">Web Engineering</span>
+            <p class="card-prompt">Compare Server-Sent Events (SSE) with WebSockets for LLMs</p>
+          </div>
+          <div class="suggestion-card" onclick="sendSuggestion('Draft a high-converting announcement email for our new developer API platform.')">
+            <span class="card-tag">Communication</span>
+            <p class="card-prompt">Draft a developer announcement email for our API platform</p>
+          </div>
+          <div class="suggestion-card" onclick="sendSuggestion('Write a clean SQL query with window functions to compute 7-day rolling revenue.')">
+            <span class="card-tag">Data & SQL</span>
+            <p class="card-prompt">Calculate a 7-day rolling revenue metric using SQL window functions</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Messages List -->
+      <div id="messages-stream" class="messages-stream"></div>
+
+      <!-- Real-Time Animated Typing Indicator -->
+      <div id="typing-indicator" class="typing-indicator-wrapper" style="display: none;">
+        <div class="message-item assistant typing-item">
+          <div class="msg-avatar assistant-avatar">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+              <path d="M2 17l10 5 10-5"></path>
+              <path d="M2 12l10 5 10-5"></path>
+            </svg>
+          </div>
+          <div class="typing-bubble">
+            <span class="typing-pulse dot-1"></span>
+            <span class="typing-pulse dot-2"></span>
+            <span class="typing-pulse dot-3"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Scroll-to-Bottom Button -->
+    <button id="scroll-bottom-btn" class="scroll-bottom-btn" onclick="scrollToBottom(true)" title="Scroll to bottom">
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <polyline points="19 12 12 19 5 12"></polyline>
+      </svg>
+    </button>
+
+    <!-- Chat Input Dock -->
+    <footer class="chat-input-area">
+      <div class="input-container-glass">
+        <!-- Input Status Meta Bar -->
+        <div class="input-meta-bar">
+          <div class="active-prompt-chip" onclick="openSystemPromptModal()" title="Click to modify system persona">
+            <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" fill="none" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span id="active-prompt-label">Persona: Default Assistant</span>
+          </div>
+
+          <div class="speech-controls-group">
+            <!-- TTS Toggle -->
+            <label class="tts-switch-label" title="Toggle automatic audio speech for incoming responses">
+              <input type="checkbox" id="tts-global-toggle" onchange="toggleAutoTTS(this.checked)">
+              <span class="tts-slider"></span>
+              <span class="tts-label-text">Auto Speak</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Input Textarea & Action Buttons -->
+        <div class="input-row">
+          <textarea 
+            id="chat-input" 
+            placeholder="Type a message, ask a technical question, or press Mic for voice dictation..." 
+            rows="1" 
+            onkeydown="handleInputKeydown(event)"
+            oninput="autoResizeTextarea(this)"></textarea>
+
+          <div class="input-actions">
+            <!-- Speech-to-Text Voice Dictation Button -->
+            <button id="mic-btn" class="action-btn mic-btn" title="Voice Dictation (Speech-to-Text)" onclick="toggleVoiceDictation()">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2" class="mic-icon">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+              <span class="mic-pulse-ring"></span>
+            </button>
+
+            <!-- Stop Generation Button (Displayed during streaming) -->
+            <button id="stop-btn" class="action-btn stop-btn" title="Stop generating" onclick="stopStreaming()" style="display: none;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+              </svg>
+            </button>
+
+            <!-- Send Message Button -->
+            <button id="send-btn" class="action-btn send-btn" title="Send message (Enter)" onclick="sendMessage()">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="input-hint-row">
+          <span class="hint-text"><strong>Enter</strong> to send &bull; <strong>Shift + Enter</strong> for newline &bull; Web Speech API ready</span>
+        </div>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<!-- System Prompt Customization Modal -->
+<div id="system-prompt-modal" class="modal-overlay" style="display: none;" onclick="closeModalOnBackdrop(event)">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <h3 class="modal-title">System Persona & Prompt Engineering</h3>
+        <p class="modal-subtitle">Guide the assistant's behavior, tone, and domain expertise.</p>
+      </div>
+      <button class="icon-btn modal-close-btn" onclick="closeSystemPromptModal()" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Preset Persona Pills -->
+      <label class="form-label">Persona Presets</label>
+      <div class="preset-pill-grid">
+        <button class="preset-pill" onclick="applyPromptPreset('default')">Default Assistant</button>
+        <button class="preset-pill" onclick="applyPromptPreset('architect')">Python Architect</button>
+        <button class="preset-pill" onclick="applyPromptPreset('concise')">Concise & Direct</button>
+        <button class="preset-pill" onclick="applyPromptPreset('creative')">Creative Copywriter</button>
+        <button class="preset-pill" onclick="applyPromptPreset('security')">Cybersecurity Auditor</button>
+      </div>
+
+      <label for="modal-system-prompt-input" class="form-label" style="margin-top: 1rem;">Custom System Prompt</label>
+      <textarea id="modal-system-prompt-input" class="form-textarea" rows="5" placeholder="Define how Aetheris AI should respond..."></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSystemPromptModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSystemPrompt()">Save Persona</button>
+    </div>
+  </div>
+</div>
+{% endblock %}

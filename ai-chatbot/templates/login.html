@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In — Aetheris AI{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-theme-bar">
+    <div class="theme-selector-group">
+      <button class="theme-pill active" data-theme="dark" onclick="setTheme('dark')" title="Dark Mode">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+      <button class="theme-pill" data-theme="light" onclick="setTheme('light')" title="Light Mode">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+        </svg>
+      </button>
+      <button class="theme-pill" data-theme="cyberpunk" onclick="setTheme('cyberpunk')" title="Cyberpunk OLED">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+        </div>
+        <h1 class="auth-title">Welcome to Aetheris</h1>
+        <p class="auth-subtitle">Sign in to access your persistent AI workspaces and streaming intelligence.</p>
+      </div>
+
+      <!-- Quick Demo Access Banner for Evaluators -->
+      <div class="demo-quick-banner" onclick="instantDemoLogin()" style="cursor: pointer;" title="Click to instantly launch workspace">
+        <div class="demo-banner-content">
+          <span class="demo-badge">Evaluator Mode</span>
+          <span class="demo-text">Click here for <strong>instant 1-click evaluation access</strong> (no typing required).</span>
+        </div>
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </div>
+
+      <form method="POST" action="{{ url_for('auth.login') }}" class="auth-form" onsubmit="return handleLoginFormSubmit(event)">
+        <div class="form-group">
+          <label for="identifier" class="form-label">Username or Email</label>
+          <div class="input-with-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" class="field-icon">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <input 
+              type="text" 
+              id="identifier" 
+              name="identifier" 
+              class="form-input" 
+              placeholder="e.g. demo_user or demo@example.com" 
+              value="{{ identifier or '' }}" 
+              required 
+              autofocus 
+              autocomplete="username">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="label-row">
+            <label for="password" class="form-label">Password</label>
+          </div>
+          <div class="input-with-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" class="field-icon">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <input 
+              type="password" 
+              id="password" 
+              name="password" 
+              class="form-input" 
+              placeholder="Enter your password" 
+              required 
+              autocomplete="current-password">
+            <button type="button" class="btn-toggle-pw" onclick="togglePasswordVisibility('password', this)" title="Toggle password visibility">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">
+          <span>Sign In to Workspace</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+
+        <div style="display: flex; align-items: center; margin: 1rem 0; gap: 0.75rem;">
+          <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+          <span style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">or instant access</span>
+          <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+        </div>
+
+        <button type="button" class="btn btn-secondary btn-block" onclick="instantDemoLogin()" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; border: 1px solid var(--accent-color); color: var(--accent-color); background: rgba(56, 189, 248, 0.08); font-weight: 500;">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span>Launch Workspace in Evaluator Mode</span>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <span>Don't have an account?</span>
+        <a href="{{ url_for('auth.register') }}" class="auth-link">Create Account</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let isLoginSubmitting = false;
+
+  async function instantDemoLogin() {
+    if (isLoginSubmitting) return;
+    isLoginSubmitting = true;
+    showToast('Starting Evaluator Workspace session...', 'info');
+
+    try {
+      const res = await fetch('{{ url_for("auth.demo_login") }}', {
+        headers: { 'Accept': 'application/json' }
+      });
+      const data = await res.json();
+      if (data && data.token) {
+        localStorage.setItem('aetheris_auth_token', data.token);
+      }
+      showToast('Welcome to the Evaluator Workspace!', 'success');
+      window.location.href = data.redirect || ('/?token=' + encodeURIComponent((data && data.token) || ''));
+    } catch (err) {
+      window.location.href = '{{ url_for("auth.demo_login") }}';
+    }
+  }
+
+  async function handleLoginFormSubmit(e) {
+    if (e) e.preventDefault();
+    if (isLoginSubmitting) return false;
+
+    const identifier = document.getElementById('identifier').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!identifier || !password) {
+      showToast('Please provide both username/email and password.', 'error');
+      return false;
+    }
+
+    isLoginSubmitting = true;
+    const submitBtn = document.querySelector('.auth-form button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.75';
+      submitBtn.style.cursor = 'wait';
+      const label = submitBtn.querySelector('span');
+      if (label) label.textContent = 'Signing In...';
+    }
+
+    try {
+      const res = await fetch('{{ url_for("auth.login") }}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ identifier, password })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.token) {
+          localStorage.setItem('aetheris_auth_token', data.token);
+        }
+        showToast('Signed in successfully! Loading workspace...', 'success');
+        window.location.href = data.redirect || ('/?token=' + encodeURIComponent(data.token || ''));
+        return false;
+      } else {
+        showToast(data.error || 'Invalid username/email or password.', 'error');
+        resetSubmitBtn();
+        return false;
+      }
+    } catch (err) {
+      document.querySelector('.auth-form').submit();
+      return true;
+    }
+  }
+
+  function resetSubmitBtn() {
+    isLoginSubmitting = false;
+    const submitBtn = document.querySelector('.auth-form button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+      const label = submitBtn.querySelector('span');
+      if (label) label.textContent = 'Sign In to Workspace';
+    }
+  }
+
+  function fillDemoCredentials() {
+    instantDemoLogin();
+  }
+
+  function togglePasswordVisibility(fieldId, btn) {
+    const input = document.getElementById(fieldId);
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.classList.add('active');
+    } else {
+      input.type = 'password';
+      btn.classList.remove('active');
+    }
+  }
+</script>
+{% endblock %}

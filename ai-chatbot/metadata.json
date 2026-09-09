@@ -1,0 +1,7 @@
+{
+  "name": "AI Chatbot",
+  "description": "Production-ready enterprise AI Chatbot built with Flask, Google Gemini streaming, SQLite persistence, voice integration, and multi-theme glassmorphic UI.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

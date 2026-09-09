@@ -1,0 +1,1173 @@
+{% extends "base.html" %}
+
+{% block title %}Aetheris AI — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
+  <!-- Persistent / Collapsible Sidebar -->
+  <aside id="app-sidebar" class="app-sidebar">
+    <div class="sidebar-header">
+      <div class="brand-badge">
+        <div class="brand-symbol">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">Aetheris</span>
+          <span class="brand-edition">Enterprise</span>
+        </div>
+      </div>
+      <button class="icon-btn desktop-collapse-btn" onclick="toggleSidebar()" title="Collapse sidebar (Ctrl+B)" aria-label="Collapse sidebar">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="9" y1="3" x2="9" y2="21"></line>
+        </svg>
+      </button>
+      <button class="icon-btn close-sidebar-btn" onclick="closeMobileSidebar()" aria-label="Close sidebar">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- New Chat Action -->
+    <div class="sidebar-actions">
+      <button id="new-chat-btn" class="btn btn-primary btn-new-chat" onclick="createNewSession()">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>New Conversation</span>
+      </button>
+    </div>
+
+    <!-- Search Sessions -->
+    <div class="sidebar-search">
+      <div class="search-input-wrapper">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" class="search-icon">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="session-search" placeholder="Search conversations..." oninput="filterSessions(this.value)" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- Conversations List -->
+    <div class="sidebar-history">
+      <div class="section-title">
+        <span>Conversations</span>
+        <span id="session-count-badge" class="badge-count">{{ sessions|length }}</span>
+      </div>
+      <ul id="sessions-list" class="sessions-list">
+        {% for s in sessions %}
+          <li class="session-item" data-session-id="{{ s.id }}" onclick="loadSession({{ s.id }})">
+            <div class="session-info">
+              <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" class="session-icon">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <span class="session-title" title="{{ s.title }}">{{ s.title }}</span>
+            </div>
+            <div class="session-actions" onclick="event.stopPropagation()">
+              <button class="session-action-btn" title="Rename conversation" onclick="openRenameModal({{ s.id }})">
+                <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+              </button>
+              <button class="session-action-btn delete-btn" title="Delete conversation" onclick="openDeleteModal({{ s.id }})">
+                <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </div>
+          </li>
+        {% else %}
+          <li class="sessions-empty" id="no-sessions-msg">No conversations yet. Start one above!</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- User Profile & System Controls Footer -->
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" title="{{ user.username }}">
+          {{ user.username[0]|upper }}
+        </div>
+        <div class="user-meta">
+          <span class="user-name">{{ user.username }}</span>
+          <span class="user-email">{{ user.email }}</span>
+        </div>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="btn-logout" title="Sign out" onclick="localStorage.removeItem('aetheris_auth_token')">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+          <polyline points="16 17 21 12 16 7"></polyline>
+          <line x1="21" y1="12" x2="9" y2="12"></line>
+        </svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Chat Stage -->
+  <main class="chat-main" id="chat-main">
+    <!-- Desktop Workstation Window Chrome / Status Bar -->
+    <div class="desktop-workstation-bar" id="desktop-workstation-bar">
+      <div class="workstation-left">
+        <div class="window-controls-dots">
+          <span class="win-dot win-dot-close" title="Workstation Active"></span>
+          <span class="win-dot win-dot-minimize" title="Toggle Sidebar (Ctrl+B)" onclick="toggleSidebar()"></span>
+          <span class="win-dot win-dot-expand" title="Toggle Wide Canvas Mode (Ctrl+Shift+W)" onclick="toggleWideMode()"></span>
+        </div>
+        <div class="workstation-branding">
+          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" class="workstation-icon">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span class="workstation-app-name">Aetheris AI Desktop</span>
+          <span class="workstation-edition-badge">Pro Workstation</span>
+        </div>
+      </div>
+
+      <div class="workstation-center">
+        <button class="desktop-search-trigger" onclick="openCommandPalette()" title="Search conversations & actions (Ctrl+K)">
+          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span class="search-trigger-text">Search conversations, commands, actions...</span>
+          <kbd class="kbd-badge">Ctrl K</kbd>
+        </button>
+      </div>
+
+      <div class="workstation-right">
+        <button id="agent-studio-trigger-btn" class="workstation-btn agent-studio-pill-btn" onclick="openAgentStudioModal()" title="Model & Persona Studio — Configure AI Personas">
+          <span id="workstation-agent-avatar" class="workstation-agent-avatar">⚡</span>
+          <span id="workstation-agent-name" class="workstation-agent-name">Gemini 2.5 Flash</span>
+          <span class="workstation-agent-tag">Model</span>
+        </button>
+        <button id="pwa-install-btn" class="workstation-btn pwa-install-btn" onclick="openInstallModal()" title="Download Aetheris Desktop App (Standalone Launcher)">
+          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download App</span>
+        </button>
+        <button class="workstation-btn" onclick="openShortcutsModal()" title="Keyboard Shortcuts (Ctrl+/)">
+          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+            <line x1="6" y1="8" x2="6" y2="8"></line>
+            <line x1="10" y1="8" x2="10" y2="8"></line>
+            <line x1="14" y1="8" x2="14" y2="8"></line>
+            <line x1="18" y1="8" x2="18" y2="8"></line>
+            <line x1="6" y1="12" x2="6" y2="12"></line>
+            <line x1="18" y1="12" x2="18" y2="12"></line>
+            <line x1="8" y1="16" x2="16" y2="16"></line>
+          </svg>
+          <span>Shortcuts</span>
+        </button>
+        <div class="desktop-engine-status" title="Google Gemini Autonomous Engine Active">
+          <span class="status-pulse-small"></span>
+          <span>Gemini Active</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Navigation Bar -->
+    <header class="chat-header">
+      <div class="header-left">
+        <button id="sidebar-toggle" class="icon-btn toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar (Ctrl+B)" aria-label="Toggle navigation drawer">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="header-session-info">
+          <h1 id="active-session-title" class="active-session-title">Select a Conversation</h1>
+          <button id="rename-title-btn" class="icon-btn-subtle" title="Rename session" onclick="renameCurrentSession()">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+          </button>
+          <button id="delete-title-btn" class="icon-btn-subtle delete-title-btn" title="Delete conversation" onclick="deleteCurrentSession()">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+          <div id="header-agent-chip" class="header-agent-chip" onclick="openAgentStudioModal()" title="Active Model — Click to configure or switch">
+            <span id="header-agent-avatar" class="agent-chip-avatar">⚡</span>
+            <span id="header-agent-name" class="agent-chip-name">Gemini 2.5 Flash</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- Wide Screen Mode Toggle -->
+        <button id="btn-wide-toggle" class="icon-btn" onclick="toggleWideMode()" title="Toggle Wide Canvas Mode (Ctrl+Shift+W)">
+          <svg id="wide-icon-expand" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+          <svg id="wide-icon-collapse" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" style="display: none;">
+            <polyline points="4 14 10 14 10 20"></polyline>
+            <polyline points="20 10 14 10 14 4"></polyline>
+            <line x1="14" y1="10" x2="21" y2="3"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+          </svg>
+        </button>
+
+        <!-- Model Tag Badge -->
+        <div class="model-badge" title="Active Model">
+          <span class="status-pulse"></span>
+          <span class="model-label">{{ gemini_model }}</span>
+        </div>
+
+        <!-- System Prompt Trigger -->
+        <button class="btn-prompt-tune" onclick="openSystemPromptModal()" title="Customize System Persona (Ctrl+Shift+S)">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span class="prompt-tune-text">Prompt</span>
+        </button>
+
+        <!-- Export Dropdown -->
+        <div class="dropdown-export">
+          <button class="icon-btn" title="Export Conversation" onclick="toggleExportMenu(event)">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+          <div id="export-menu" class="export-menu">
+            <button onclick="exportCurrentSession('markdown')">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              <span>Export as Markdown (.md)</span>
+            </button>
+            <button onclick="exportCurrentSession('json')">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+              <span>Export as JSON (.json)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Multi-Theme Selector Pills -->
+        <div class="theme-selector-group">
+          <button class="theme-pill active" data-theme="dark" onclick="setTheme('dark')" title="Dark Mode (Slate)">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+          <button class="theme-pill" data-theme="light" onclick="setTheme('light')" title="Light Mode">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+          </button>
+          <button class="theme-pill" data-theme="cyberpunk" onclick="setTheme('cyberpunk')" title="Cyberpunk OLED">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Message Conversation Scroll Area -->
+    <div id="messages-container" class="messages-container" onscroll="handleScroll(this)">
+      <!-- Initial Welcome State (Rendered when no session or empty messages) -->
+      <div id="welcome-state" class="welcome-state">
+        <div class="welcome-symbol">
+          <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" fill="none" stroke-width="1.5">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+        </div>
+        <h2 class="welcome-title">How can I accelerate your work today?</h2>
+        <p class="welcome-subtitle">Aetheris AI is ready with Gemini intelligence, real-time token streaming, speech dictation, and relational persistence.</p>
+        
+        <div class="suggestion-grid">
+          <div class="suggestion-card" onclick="sendSuggestion('Write an optimized Python function implementing an LRU cache using collections.OrderedDict.')">
+            <span class="card-tag">Python Architecture</span>
+            <p class="card-prompt">Implement an LRU Cache in Python with O(1) time complexity</p>
+          </div>
+          <div class="suggestion-card" onclick="sendSuggestion('Explain Server-Sent Events (SSE) vs WebSockets for streaming LLM tokens, with pros and cons.')">
+            <span class="card-tag">Web Engineering</span>
+            <p class="card-prompt">Compare Server-Sent Events (SSE) with WebSockets for LLMs</p>
+          </div>
+          <div class="suggestion-card" onclick="sendSuggestion('Draft a high-converting announcement email for our new developer API platform.')">
+            <span class="card-tag">Communication</span>
+            <p class="card-prompt">Draft a developer announcement email for our API platform</p>
+          </div>
+          <div class="suggestion-card" onclick="sendSuggestion('Write a clean SQL query with window functions to compute 7-day rolling revenue.')">
+            <span class="card-tag">Data & SQL</span>
+            <p class="card-prompt">Calculate a 7-day rolling revenue metric using SQL window functions</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Messages List -->
+      <div id="messages-stream" class="messages-stream"></div>
+
+      <!-- Real-Time Animated Typing Indicator -->
+      <div id="typing-indicator" class="typing-indicator-wrapper" style="display: none;">
+        <div class="message-item assistant typing-item">
+          <div class="msg-avatar assistant-avatar">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+              <path d="M2 17l10 5 10-5"></path>
+              <path d="M2 12l10 5 10-5"></path>
+            </svg>
+          </div>
+          <div class="typing-bubble">
+            <span class="typing-pulse dot-1"></span>
+            <span class="typing-pulse dot-2"></span>
+            <span class="typing-pulse dot-3"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Scroll-to-Bottom Button -->
+    <button id="scroll-bottom-btn" class="scroll-bottom-btn" onclick="scrollToBottom(true)" title="Scroll to bottom">
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <polyline points="19 12 12 19 5 12"></polyline>
+      </svg>
+    </button>
+
+    <!-- Chat Input Dock -->
+    <footer class="chat-input-area">
+      <div class="input-container-glass">
+        <!-- Input Status Meta Bar -->
+        <div class="input-meta-bar">
+          <div class="active-agent-dock-chip" onclick="openAgentStudioModal()" title="Active Model: Gemini 2.5 Flash">
+            <span id="dock-agent-avatar" class="dock-avatar">⚡</span>
+            <span id="dock-agent-name" class="dock-name">Gemini 2.5 Flash</span>
+            <span class="dock-pill-tag">Model</span>
+          </div>
+
+          <div class="active-prompt-chip" onclick="openSystemPromptModal()" title="Click to inspect session persona overrides">
+            <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" fill="none" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span id="active-prompt-label">Persona: Default Assistant</span>
+          </div>
+
+          <div class="speech-controls-group">
+            <!-- TTS Toggle -->
+            <label class="tts-switch-label" title="Toggle automatic audio speech for incoming responses">
+              <input type="checkbox" id="tts-global-toggle" onchange="toggleAutoTTS(this.checked)">
+              <span class="tts-slider"></span>
+              <span class="tts-label-text">Auto Speak</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Attachment & Active Mode Previews Tray -->
+        <div id="attachments-preview-tray" class="attachments-preview-tray" style="display: none;">
+          <!-- Dynamically populated chips for uploaded images, documents, or create-image mode -->
+        </div>
+
+        <!-- Input Textarea & Action Buttons -->
+        <div class="input-row">
+          <!-- Plus (+) Action Button & Popup Menu like Gemini / ChatGPT / Claude -->
+          <div class="plus-tools-wrapper">
+            <button id="chat-plus-btn" class="chat-plus-btn" type="button" title="Attach files, generate images, or select tools (+)" onclick="togglePlusMenu(event)">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" class="plus-icon-svg">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+
+            <!-- Popup Menu Dropdown -->
+            <div id="plus-dropdown-menu" class="plus-dropdown-menu" style="display: none;" onclick="event.stopPropagation()">
+              <div class="plus-menu-header">
+                <span class="plus-menu-header-title">Create & Attach</span>
+                <span class="plus-menu-header-badge">AI Tools</span>
+              </div>
+              <div class="plus-menu-items">
+                <!-- Option 1: Create Image -->
+                <button type="button" class="plus-menu-item" onclick="activateCreateImageMode()">
+                  <div class="plus-item-icon-box plus-icon-palette">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+                      <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+                      <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+                      <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+                      <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+                      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.563-2.512 5.563-5.563C22 6.5 17.5 2 12 2z"></path>
+                    </svg>
+                  </div>
+                  <div class="plus-item-details">
+                    <div class="plus-item-heading-row">
+                      <span class="plus-item-title">Create image</span>
+                      <span class="plus-pill-badge">AI Gen</span>
+                    </div>
+                    <span class="plus-item-desc">Synthesize stunning images with Gemini</span>
+                  </div>
+                </button>
+
+                <!-- Option 2: Select Images -->
+                <button type="button" class="plus-menu-item" onclick="triggerImageFilePicker()">
+                  <div class="plus-item-icon-box plus-icon-photo">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                  </div>
+                  <div class="plus-item-details">
+                    <span class="plus-item-title">Select images</span>
+                    <span class="plus-item-desc">Upload photos, diagrams & screenshots</span>
+                  </div>
+                </button>
+
+                <!-- Option 3: Upload Document -->
+                <button type="button" class="plus-menu-item" onclick="triggerDocFilePicker()">
+                  <div class="plus-item-icon-box plus-icon-doc">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                  </div>
+                  <div class="plus-item-details">
+                    <span class="plus-item-title">Upload document</span>
+                    <span class="plus-item-desc">Analyze PDFs, code, CSVs, or text</span>
+                  </div>
+                </button>
+
+                <div class="plus-menu-separator"></div>
+
+                <!-- Option 4: AI Agents & Personas -->
+                <button type="button" class="plus-menu-item" onclick="openAgentStudioModal()">
+                  <div class="plus-item-icon-box plus-icon-agent">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                      <path d="M2 17l10 5 10-5"></path>
+                      <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                  </div>
+                  <div class="plus-item-details">
+                    <span class="plus-item-title">AI Agents & Forge</span>
+                    <span class="plus-item-desc">Switch persona or create a specialist</span>
+                  </div>
+                </button>
+
+                <!-- Option 5: Web Search Grounding -->
+                <button type="button" class="plus-menu-item" onclick="toggleWebGrounding()">
+                  <div class="plus-item-icon-box plus-icon-globe">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="2" y1="12" x2="22" y2="12"></line>
+                      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                    </svg>
+                  </div>
+                  <div class="plus-item-details">
+                    <div class="plus-item-heading-row">
+                      <span class="plus-item-title">Web Search</span>
+                      <span id="plus-web-badge" class="plus-toggle-badge">Off</span>
+                    </div>
+                    <span class="plus-item-desc">Real-time live Google grounding</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hidden Native File Inputs -->
+          <input type="file" id="chat-image-input" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" multiple style="display: none;" onchange="handleImageFilesChosen(event)">
+          <input type="file" id="chat-doc-input" accept=".txt,.pdf,.csv,.json,.py,.js,.ts,.html,.css,.md,.xml,.sql,.sh,.doc,.docx" multiple style="display: none;" onchange="handleDocFilesChosen(event)">
+
+          <textarea 
+            id="chat-input" 
+            placeholder="Type a message, ask a question, or attach files with (+)..." 
+            rows="1" 
+            onkeydown="handleInputKeydown(event)"
+            oninput="autoResizeTextarea(this)"></textarea>
+
+          <div class="input-actions">
+            <!-- Speech-to-Text Voice Dictation Button -->
+            <button id="mic-btn" class="action-btn mic-btn" title="Voice Dictation (Speech-to-Text)" onclick="toggleVoiceDictation()">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2" class="mic-icon">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+              <span class="mic-pulse-ring"></span>
+            </button>
+
+            <!-- Stop Generation Button (Displayed during streaming) -->
+            <button id="stop-btn" class="action-btn stop-btn" title="Stop generating" onclick="stopStreaming()" style="display: none;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+              </svg>
+            </button>
+
+            <!-- Send Message Button -->
+            <button id="send-btn" class="action-btn send-btn" title="Send message (Enter)" onclick="sendMessage()">
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="input-hint-row">
+          <span class="hint-text"><strong>Enter</strong> to send &bull; <strong>Shift + Enter</strong> for newline &bull; Web Speech API ready</span>
+        </div>
+      </div>
+    </footer>
+  </main>
+</div>
+
+<!-- System Prompt Customization Modal -->
+<div id="system-prompt-modal" class="modal-overlay" style="display: none;" onclick="closeModalOnBackdrop(event)">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <h3 class="modal-title">System Persona & Prompt Engineering</h3>
+        <p class="modal-subtitle">Guide the assistant's behavior, tone, and domain expertise.</p>
+      </div>
+      <button class="icon-btn modal-close-btn" onclick="closeSystemPromptModal()" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Preset Persona Pills -->
+      <label class="form-label">Persona Presets</label>
+      <div class="preset-pill-grid">
+        <button class="preset-pill" onclick="applyPromptPreset('default')">Default Assistant</button>
+        <button class="preset-pill" onclick="applyPromptPreset('architect')">Python Architect</button>
+        <button class="preset-pill" onclick="applyPromptPreset('concise')">Concise & Direct</button>
+        <button class="preset-pill" onclick="applyPromptPreset('creative')">Creative Copywriter</button>
+        <button class="preset-pill" onclick="applyPromptPreset('security')">Cybersecurity Auditor</button>
+      </div>
+
+      <label for="modal-system-prompt-input" class="form-label" style="margin-top: 1rem;">Custom System Prompt</label>
+      <textarea id="modal-system-prompt-input" class="form-textarea" rows="5" placeholder="Define how Aetheris AI should respond..."></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeSystemPromptModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSystemPrompt()">Save Persona</button>
+    </div>
+  </div>
+</div>
+
+<!-- Desktop Command Palette Modal (Ctrl + K) -->
+<div id="command-palette-modal" class="modal-overlay palette-overlay" style="display: none;" onclick="closePaletteOnBackdrop(event)">
+  <div class="command-palette-dialog">
+    <div class="palette-input-bar">
+      <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2" class="palette-search-icon">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" id="palette-search-input" class="palette-input" placeholder="Type a command or search conversations..." autocomplete="off" oninput="handlePaletteSearch(this.value)" onkeydown="handlePaletteKeydown(event)">
+      <kbd class="palette-kbd-hint">ESC</kbd>
+    </div>
+
+    <div class="palette-results-container" id="palette-results">
+      <!-- Generated dynamically -->
+    </div>
+
+    <div class="palette-footer">
+      <div class="palette-hint-item">
+        <kbd class="mini-kbd">↑</kbd><kbd class="mini-kbd">↓</kbd> Navigate
+      </div>
+      <div class="palette-hint-item">
+        <kbd class="mini-kbd">↵</kbd> Select
+      </div>
+      <div class="palette-hint-item">
+        <kbd class="mini-kbd">ESC</kbd> Close
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Desktop Keyboard Shortcuts Cheat Sheet Modal (?) -->
+<div id="shortcuts-modal" class="modal-overlay" style="display: none;" onclick="closeShortcutsOnBackdrop(event)">
+  <div class="modal-dialog shortcuts-dialog">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <h3 class="modal-title">Desktop Workstation Shortcuts</h3>
+        <p class="modal-subtitle">High-speed keyboard navigation and actions for power users.</p>
+      </div>
+      <button class="icon-btn modal-close-btn" onclick="closeShortcutsModal()" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body shortcuts-grid">
+      <div class="shortcut-group">
+        <div class="shortcut-group-title">Navigation & Workspace</div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Open Command Palette</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>K</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Toggle Sidebar Collapse</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>B</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Toggle Wide Canvas Mode</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Show Keyboard Shortcuts</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>/</kbd> or <kbd>?</kbd></div>
+        </div>
+      </div>
+
+      <div class="shortcut-group">
+        <div class="shortcut-group-title">Conversation & Messaging</div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">New Conversation</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>N</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Send Message</span>
+          <div class="shortcut-keys"><kbd>Enter</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Add Line Break in Input</span>
+          <div class="shortcut-keys"><kbd>Shift</kbd> + <kbd>Enter</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">System Persona Settings</span>
+          <div class="shortcut-keys"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></div>
+        </div>
+        <div class="shortcut-row">
+          <span class="shortcut-desc">Dismiss Active Modal / Menu</span>
+          <div class="shortcut-keys"><kbd>Esc</kbd></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closeShortcutsModal()">Got It</button>
+    </div>
+  </div>
+</div>
+
+<!-- Desktop Standalone PWA & Package Download Modal -->
+<div id="desktop-install-modal" class="modal-overlay" style="display: none;" onclick="closeInstallModalOnBackdrop(event)">
+  <div class="modal-dialog install-dialog">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <h3 class="modal-title" id="install-modal-title">Download Aetheris Desktop App</h3>
+        <p class="modal-subtitle" id="install-modal-subtitle">Standalone desktop workstation launcher with native keyboard shortcuts.</p>
+      </div>
+      <button class="icon-btn modal-close-btn" onclick="closeInstallModal()" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Default View: App Info & Specs -->
+      <div id="install-default-view">
+        <div class="install-card-preview">
+          <div class="install-card-icon">
+            <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" fill="none" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </div>
+          <div class="install-card-info">
+            <h4>Aetheris AI Desktop Workstation</h4>
+            <p>Version 2.4.0 &bull; Standalone Launcher &bull; Cross-Platform</p>
+          </div>
+        </div>
+
+        <div class="install-specs-grid">
+          <div class="spec-chip">
+            <span class="spec-label">Package</span>
+            <span class="spec-val">Desktop Bundle</span>
+          </div>
+          <div class="spec-chip">
+            <span class="spec-label">Bundle Size</span>
+            <span class="spec-val">14.8 MB</span>
+          </div>
+          <div class="spec-chip">
+            <span class="spec-label">OS Target</span>
+            <span class="spec-val">Win &bull; Mac &bull; Linux</span>
+          </div>
+        </div>
+
+        <div class="install-steps">
+          <div class="step-item">
+            <span class="step-num">1</span>
+            <span class="step-text">Click <strong>Download Desktop Package</strong> below to start downloading.</span>
+          </div>
+          <div class="step-item">
+            <span class="step-num">2</span>
+            <span class="step-text">Once downloaded, double-click the launcher file in your Downloads folder to run as a dedicated desktop app.</span>
+          </div>
+          <div class="step-item">
+            <span class="step-num">3</span>
+            <span class="step-text">Or install via browser: click the <strong>Install icon (⊕)</strong> directly in your browser's address bar.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Downloading View -->
+      <div id="install-downloading-view" style="display: none;">
+        <div class="downloading-header">
+          <div class="download-spinner-wrap">
+            <div class="download-pulse-ring"></div>
+            <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" fill="none" stroke-width="2" class="download-icon-active">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </div>
+          <h4 id="download-progress-status">Preparing package download...</h4>
+          <p id="download-progress-sub">Connecting to local build repository...</p>
+        </div>
+
+        <div class="download-progress-bar-wrap">
+          <div id="download-progress-fill" class="download-progress-bar-fill" style="width: 0%;"></div>
+        </div>
+
+        <div class="download-telemetry">
+          <span id="download-percent">0%</span>
+          <span id="download-speed">4.8 MB/s</span>
+          <span id="download-size">0.0 MB / 14.8 MB</span>
+        </div>
+
+        <div class="download-steps-indicator">
+          <div class="dl-step active" id="dl-step-1"><span class="dl-dot"></span> Packaging manifest & offline cache</div>
+          <div class="dl-step" id="dl-step-2"><span class="dl-dot"></span> Compiling standalone desktop wrapper</div>
+          <div class="dl-step" id="dl-step-3"><span class="dl-dot"></span> Finalizing binary launcher</div>
+        </div>
+      </div>
+
+      <!-- Completed Download View -->
+      <div id="install-complete-view" style="display: none;">
+        <div class="install-complete-card">
+          <div class="complete-checkmark-icon">
+            <svg viewBox="0 0 24 24" width="30" height="30" stroke="#22c55e" fill="none" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <h4>Download Complete!</h4>
+          <p>The <strong>Aetheris-AI-Desktop-Launcher.html</strong> standalone launcher has been saved to your Downloads folder.</p>
+        </div>
+
+        <div class="complete-actions-list">
+          <div class="complete-action-tip">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            <div>
+              <strong>Instant Desktop Launch</strong>
+              <span>Double-click the launcher file in your Downloads folder anytime to run without browser tabs or address bars.</span>
+            </div>
+          </div>
+          <div class="complete-action-tip">
+            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            <div>
+              <strong>Pin to Taskbar or Desktop</strong>
+              <span>Move the file to your Desktop or pin it to your dock for convenient 1-click access.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer" id="install-modal-footer">
+      <div id="install-default-footer" style="display: flex; gap: 0.5rem; justify-content: flex-end; width: 100%;">
+        <button type="button" class="btn btn-secondary" onclick="closeInstallModal()">Close</button>
+        <button type="button" id="btn-execute-install" class="btn btn-primary" onclick="startAppDownloadFlow()">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download Desktop Package</span>
+        </button>
+      </div>
+
+      <div id="install-downloading-footer" style="display: none; width: 100%; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" onclick="cancelAppDownload()">Cancel Download</button>
+      </div>
+
+      <div id="install-complete-footer" style="display: none; gap: 0.5rem; justify-content: flex-end; width: 100%;">
+        <button type="button" class="btn btn-secondary" onclick="resetAndStartDownloadAgain()">Download Again</button>
+        <button type="button" class="btn btn-primary" onclick="launchStandalonePreview()">Launch in Standalone Window</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rename Conversation Modal -->
+<div id="rename-session-modal" class="modal-overlay" style="display: none;" onclick="closeRenameModalOnBackdrop(event)">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <h3 class="modal-title">Rename Conversation</h3>
+        <p class="modal-subtitle">Update the title for this chat conversation.</p>
+      </div>
+      <button class="icon-btn modal-close-btn" onclick="closeRenameModal()" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="rename-session-id">
+      <label for="rename-session-input" class="form-label">Conversation Title</label>
+      <input type="text" id="rename-session-input" class="form-input" placeholder="Enter conversation title..." autocomplete="off" onkeydown="if(event.key==='Enter') submitRenameSession()">
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeRenameModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" id="save-rename-btn" onclick="submitRenameSession()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Conversation Confirmation Modal -->
+<div id="delete-session-modal" class="modal-overlay" style="display: none;" onclick="closeDeleteModalOnBackdrop(event)">
+  <div class="modal-dialog">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <h3 class="modal-title" style="color: #ef4444;">Delete Conversation</h3>
+        <p class="modal-subtitle">This conversation and all its messages will be permanently removed.</p>
+      </div>
+      <button class="icon-btn modal-close-btn" onclick="closeDeleteModal()" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="delete-session-id">
+      <p style="font-size: 0.92rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Are you sure you want to delete:</p>
+      <div id="delete-session-target-title" style="padding: 0.75rem 1rem; background: var(--surface-hover); border-radius: var(--radius-sm); font-weight: 600; color: var(--text-primary); word-break: break-word;"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+      <button type="button" class="btn btn-danger" id="confirm-delete-btn" onclick="submitDeleteSession()">Delete Permanently</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================================================
+     AI AGENT STUDIO MODAL (Generate with AI / Custom Builder / Agent Library)
+     ========================================================================== -->
+<div id="agent-studio-modal" class="modal-overlay" style="display: none;" onclick="closeAgentStudioOnBackdrop(event)">
+  <div class="modal-dialog modal-dialog-wide">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <div style="display: flex; align-items: center; gap: 0.55rem;">
+          <span style="font-size: 1.35rem; line-height: 1;">⚡</span>
+          <h3 class="modal-title">AI Agent Studio & Forge</h3>
+        </div>
+        <p class="modal-subtitle">Architect specialized autonomous AI agents with Gemini 3.8 Flash or customize your own personas and operational instructions.</p>
+      </div>
+      <button class="icon-btn modal-close-btn" onclick="closeAgentStudioModal()" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Agent Studio Navigation Tabs -->
+    <div class="agent-modal-tabs">
+      <button class="agent-tab-btn active" id="tab-btn-gen" onclick="switchAgentTab('generate')">
+        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+        <span>✨ Generate with AI</span>
+      </button>
+      <button class="agent-tab-btn" id="tab-btn-build" onclick="switchAgentTab('builder')">
+        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+        </svg>
+        <span>⚡ Custom Builder</span>
+      </button>
+      <button class="agent-tab-btn" id="tab-btn-lib" onclick="switchAgentTab('library')">
+        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+        <span>🤖 Agent Library</span>
+        <span id="agent-library-count-badge" class="badge-tag highlight" style="font-size: 0.62rem; padding: 0.05rem 0.35rem;">4</span>
+      </button>
+    </div>
+
+    <div class="modal-body" style="padding-top: 0;">
+      <!-- TAB 1: GENERATE WITH AI -->
+      <div id="agent-pane-generate" class="agent-pane">
+        <label for="agent-gen-prompt" class="form-label">Describe the AI Agent you want to create:</label>
+        <textarea id="agent-gen-prompt" class="form-textarea" rows="3" placeholder="e.g., A Lead Python Backend Architect specialized in high-concurrency microservices, async SQLAlchemy, and event-driven architectures..."></textarea>
+        
+        <!-- Starter Presets -->
+        <div style="margin-top: 0.45rem;">
+          <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Quick Presets:</span>
+          <div class="agent-preset-chips">
+            <button type="button" class="preset-chip" onclick="applyAgentPreset('Python Architecture Specialist with mastery of async patterns, concurrency, and performance tuning')">⚡ Python Architect</button>
+            <button type="button" class="preset-chip" onclick="applyAgentPreset('Senior Cybersecurity Auditor specialized in zero-trust, OWASP Top 10, penetration testing, and vulnerability remediation')">🛡️ Security Auditor</button>
+            <button type="button" class="preset-chip" onclick="applyAgentPreset('Lead Data Scientist & ML Engineer skilled in predictive modeling, feature engineering, and PyTorch architectures')">📊 Data Scientist</button>
+            <button type="button" class="preset-chip" onclick="applyAgentPreset('Deep Technical Research Analyst that produces cited, synthesized executive reports and whitepapers')">🔬 Research Analyst</button>
+            <button type="button" class="preset-chip" onclick="applyAgentPreset('Master Storyteller and Narrative Copywriter who crafts persuasive prose and viral narratives')">✍️ Narrative Copywriter</button>
+            <button type="button" class="preset-chip" onclick="applyAgentPreset('Quantitative Financial Valuation Modeler with DCF, LBO, and risk analysis expertise')">📈 Financial Modeler</button>
+          </div>
+        </div>
+
+        <!-- Optional Custom API Key -->
+        <div style="margin-top: 0.75rem;">
+          <label for="agent-gen-api-key" class="form-label" style="display: flex; justify-content: space-between;">
+            <span>Custom Gemini API Key (Optional)</span>
+            <span style="font-weight: normal; color: var(--text-muted); font-size: 0.72rem;">Leave blank to use server environment key</span>
+          </label>
+          <input type="password" id="agent-gen-api-key" class="form-input" placeholder="AIzaSy... (Optional override)" autocomplete="off">
+        </div>
+
+        <!-- Generate Button -->
+        <div style="margin-top: 1rem; display: flex; align-items: center; justify-content: space-between;">
+          <label style="display: flex; align-items: center; gap: 0.45rem; font-size: 0.78rem; color: var(--text-secondary); cursor: pointer;">
+            <input type="checkbox" id="agent-gen-autosave" checked>
+            <span>Automatically save to library upon generation</span>
+          </label>
+          <button type="button" class="btn btn-primary" id="btn-generate-agent" onclick="submitGenerateAgent()">
+            <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            <span id="btn-gen-text">✨ Generate Agent with AI</span>
+          </button>
+        </div>
+
+        <!-- Generated Result Card (Hidden until generated) -->
+        <div id="agent-gen-result-card" class="agent-preview-card" style="display: none;">
+          <div class="agent-preview-header">
+            <div class="agent-preview-identity">
+              <span id="gen-res-avatar" class="preview-avatar-large">🤖</span>
+              <div class="preview-title-block">
+                <h4 id="gen-res-name">Custom Generated Agent</h4>
+                <span id="gen-res-role" class="preview-role-text">Specialized Engineer</span>
+              </div>
+            </div>
+            <div class="preview-badges">
+              <span id="gen-res-model" class="badge-tag highlight">gemini-2.5-flash</span>
+              <span id="gen-res-temp" class="badge-tag">Temp: 0.7</span>
+            </div>
+          </div>
+          <p id="gen-res-desc" class="preview-desc-text">Operational agent description will appear here.</p>
+          <div id="gen-res-caps" class="preview-badges"></div>
+          <div>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">System Persona Instructions:</span>
+            <div id="gen-res-prompt" class="preview-prompt-box"></div>
+          </div>
+          <div class="preview-actions-bar">
+            <button type="button" class="btn btn-secondary" onclick="transferGenToBuilder()">
+              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+              <span>Edit in Builder</span>
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-activate-gen-agent" onclick="activateGeneratedAgent()">
+              <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>Activate & Start Chatting</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: CUSTOM BUILDER -->
+      <div id="agent-pane-builder" class="agent-pane" style="display: none;">
+        <input type="hidden" id="builder-agent-id" value="">
+        <div style="display: grid; grid-template-columns: 80px 1fr; gap: 0.85rem; align-items: flex-start;">
+          <div>
+            <label for="builder-avatar-input" class="form-label">Avatar</label>
+            <input type="text" id="builder-avatar-input" class="form-input" value="🤖" maxlength="4" style="text-align: center; font-size: 1.5rem; height: 42px;">
+          </div>
+          <div>
+            <label for="builder-name-input" class="form-label">Agent Name *</label>
+            <input type="text" id="builder-name-input" class="form-input" placeholder="e.g. Research Assistant" autocomplete="off">
+          </div>
+        </div>
+
+        <!-- Quick Emoji Chips -->
+        <div style="margin-top: 0.45rem;">
+          <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">CHOOSE AVATAR ICON:</span>
+          <div class="emoji-selector-row">
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('🤖')">🤖</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('🛡️')">🛡️</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('⚡')">⚡</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('🔬')">🔬</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('📊')">📊</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('🧠')">🧠</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('💻')">💻</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('🎯')">🎯</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('🚀')">🚀</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('✍️')">✍️</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('🔍')">🔍</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('🎨')">🎨</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('📈')">📈</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('🧩')">🧩</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('⚖️')">⚖️</button>
+            <button type="button" class="emoji-choice-btn" onclick="selectBuilderEmoji('🌐')">🌐</button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-top: 0.5rem;">
+          <div>
+            <label for="builder-role-input" class="form-label">Role / Specialization</label>
+            <input type="text" id="builder-role-input" class="form-input" placeholder="e.g. Principal Systems Engineer">
+          </div>
+          <div>
+            <label for="builder-model-select" class="form-label">AI Engine Model</label>
+            <select id="builder-model-select" class="form-input">
+              <option value="gemini-2.5-flash" selected>Gemini 2.5 Flash (Ultra-Fast & Free Quota - Recommended)</option>
+              <option value="llama-3.3-70b">Meta Llama 3.3 (Open-Source Architecture & Reasoning)</option>
+              <option value="gemini-3.6-flash">Gemini 3.6 Flash (Advanced Analytical Reasoning)</option>
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash (Multimodal Preview)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top: 0.65rem;">
+          <label for="builder-desc-input" class="form-label">Short Description</label>
+          <input type="text" id="builder-desc-input" class="form-input" placeholder="e.g. Architects resilient backends and optimizes database queries.">
+        </div>
+
+        <div style="margin-top: 0.65rem;">
+          <label for="builder-prompt-input" class="form-label">System Persona & Operational Directives *</label>
+          <textarea id="builder-prompt-input" class="form-textarea" rows="4" placeholder="You are an autonomous AI Agent specializing in... Follow these rules: 1. Provide production-grade code. 2. Explain architectural decisions."></textarea>
+        </div>
+
+        <div style="margin-top: 0.65rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label for="builder-temp-slider" class="form-label">Inference Temperature</label>
+            <span id="builder-temp-badge" class="badge-tag highlight">0.70 — Balanced</span>
+          </div>
+          <input type="range" id="builder-temp-slider" min="0.0" max="1.0" step="0.05" value="0.7" class="form-range" oninput="updateBuilderTempReadout(this.value)" style="width: 100%;">
+        </div>
+
+        <div style="margin-top: 0.65rem;">
+          <label for="builder-caps-input" class="form-label">Capabilities (Comma-separated)</label>
+          <input type="text" id="builder-caps-input" class="form-input" placeholder="e.g. System Design, Code Optimization, SQL Window Functions, Security Audit">
+        </div>
+
+        <div style="margin-top: 0.65rem;">
+          <label for="builder-key-input" class="form-label" style="display: flex; justify-content: space-between;">
+            <span>Agent-Specific API Key (Optional)</span>
+            <span style="font-weight: normal; color: var(--text-muted); font-size: 0.72rem;">Leave empty for workspace default</span>
+          </label>
+          <input type="password" id="builder-key-input" class="form-input" placeholder="Optional custom Gemini key for this agent..." autocomplete="off">
+        </div>
+
+        <div style="margin-top: 1.25rem; display: flex; justify-content: flex-end; gap: 0.65rem;">
+          <button type="button" class="btn btn-secondary" onclick="resetBuilderForm()">Reset Form</button>
+          <button type="button" class="btn btn-primary" id="btn-save-builder-agent" onclick="submitBuilderAgent()">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            <span id="btn-builder-save-text">Save Agent & Activate</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB 3: AGENT LIBRARY -->
+      <div id="agent-pane-library" class="agent-pane" style="display: none;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
+          <input type="text" id="agent-library-search" class="form-input" placeholder="Filter agents by name, role, or capability..." style="max-width: 340px;" oninput="filterAgentLibrary(this.value)">
+          <button type="button" class="btn btn-primary btn-sm" onclick="switchAgentTab('builder')">
+            <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>New Custom Agent</span>
+          </button>
+        </div>
+
+        <div id="agent-library-container" class="agent-library-grid">
+          <!-- Rendered dynamically by loadAgentLibrary() -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Image Lightbox Modal -->
+<div id="image-lightbox-modal" class="modal-backdrop" style="display: none;" onclick="closeImageLightboxOnBackdrop(event)">
+  <div class="lightbox-dialog" onclick="event.stopPropagation()">
+    <div class="lightbox-header">
+      <div class="lightbox-title-wrap">
+        <span class="lightbox-icon">🖼️</span>
+        <span id="lightbox-title" class="lightbox-title">Generated Visual</span>
+      </div>
+      <div class="lightbox-actions">
+        <a id="lightbox-download-btn" href="#" download="ai-generated-image.png" class="btn btn-secondary btn-sm" title="Download image to device">
+          <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Download</span>
+        </a>
+        <button type="button" class="modal-close-btn" onclick="closeImageLightbox()" title="Close viewer (Esc)">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div class="lightbox-body">
+      <img id="lightbox-image" src="" alt="Full view" referrerpolicy="no-referrer">
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Create Account — Aetheris AI{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-theme-bar">
+    <div class="theme-selector-group">
+      <button class="theme-pill active" data-theme="dark" onclick="setTheme('dark')" title="Dark Mode">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+      <button class="theme-pill" data-theme="light" onclick="setTheme('light')" title="Light Mode">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+        </svg>
+      </button>
+      <button class="theme-pill" data-theme="cyberpunk" onclick="setTheme('cyberpunk')" title="Cyberpunk OLED">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+            <path d="M2 17l10 5 10-5"></path>
+            <path d="M2 12l10 5 10-5"></path>
+          </svg>
+        </div>
+        <h1 class="auth-title">Create your Account</h1>
+        <p class="auth-subtitle">Initialize your personal AI environment with persistent conversation history.</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('auth.register') }}" class="auth-form" onsubmit="return handleRegisterFormSubmit(event)">
+        <div class="form-group">
+          <label for="username" class="form-label">Username</label>
+          <div class="input-with-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" class="field-icon">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <input 
+              type="text" 
+              id="username" 
+              name="username" 
+              class="form-input" 
+              placeholder="e.g. alex_developer" 
+              value="{{ username or '' }}" 
+              required 
+              autofocus 
+              autocomplete="username">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email" class="form-label">Work or Personal Email</label>
+          <div class="input-with-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" class="field-icon">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              class="form-input" 
+              placeholder="e.g. alex@example.com" 
+              value="{{ email or '' }}" 
+              required 
+              autocomplete="email">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">Password (min. 6 characters)</label>
+          <div class="input-with-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" class="field-icon">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <input 
+              type="password" 
+              id="password" 
+              name="password" 
+              class="form-input" 
+              placeholder="Create a secure password" 
+              required 
+              minlength="6"
+              autocomplete="new-password">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="confirm_password" class="form-label">Confirm Password</label>
+          <div class="input-with-icon">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2" class="field-icon">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <input 
+              type="password" 
+              id="confirm_password" 
+              name="confirm_password" 
+              class="form-input" 
+              placeholder="Repeat your password" 
+              required 
+              minlength="6"
+              autocomplete="new-password">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">
+          <span>Create My Account</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
+          </svg>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <span>Already have an account?</span>
+        <a href="{{ url_for('auth.login') }}" class="auth-link">Sign In</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let isRegisterSubmitting = false;
+
+  async function handleRegisterFormSubmit(e) {
+    if (e) e.preventDefault();
+    if (isRegisterSubmitting) return false;
+
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm_password = document.getElementById('confirm_password').value;
+
+    if (!username || !email || !password || !confirm_password) {
+      showToast('All fields are required.', 'error');
+      return false;
+    }
+    if (password.length < 6) {
+      showToast('Password must be at least 6 characters.', 'error');
+      return false;
+    }
+    if (password !== confirm_password) {
+      showToast('Passwords do not match.', 'error');
+      return false;
+    }
+
+    isRegisterSubmitting = true;
+    const submitBtn = document.querySelector('.auth-form button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.75';
+      submitBtn.style.cursor = 'wait';
+      const label = submitBtn.querySelector('span');
+      if (label) label.textContent = 'Creating Account...';
+    }
+
+    try {
+      const res = await fetch('{{ url_for("auth.register") }}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ username, email, password, confirm_password })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.token) {
+          localStorage.setItem('aetheris_auth_token', data.token);
+        }
+        showToast('Account created successfully! Entering workspace...', 'success');
+        window.location.href = data.redirect || ('/?token=' + encodeURIComponent(data.token || ''));
+        return false;
+      } else {
+        showToast(data.error || 'Failed to create account. Please check your details.', 'error');
+        resetRegisterBtn();
+        return false;
+      }
+    } catch (err) {
+      document.querySelector('.auth-form').submit();
+      return true;
+    }
+  }
+
+  function resetRegisterBtn() {
+    isRegisterSubmitting = false;
+    const submitBtn = document.querySelector('.auth-form button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+      const label = submitBtn.querySelector('span');
+      if (label) label.textContent = 'Create My Account';
+    }
+  }
+</script>
+{% endblock %}
